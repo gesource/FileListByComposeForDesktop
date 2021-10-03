@@ -1,10 +1,18 @@
 import androidx.compose.desktop.DesktopMaterialTheme
 import androidx.compose.desktop.ui.tooling.preview.Preview
+import androidx.compose.foundation.VerticalScrollbar
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.Button
-import androidx.compose.material.Text
-import androidx.compose.material.TextField
-import androidx.compose.runtime.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollbarAdapter
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.List
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.key.Key
@@ -23,10 +31,12 @@ import java.awt.dnd.DropTargetDropEvent
 import java.io.File
 import javax.swing.JFileChooser
 
+
+@ExperimentalComposeUiApi
 fun main() = application {
     Window(
         onCloseRequest = ::exitApplication,
-        title = ""
+        title = "FileList"
     ) {
         val model = FileListModel()
         DropTarget(this) { file ->
@@ -66,7 +76,7 @@ fun DropTarget(
         frameWindowScope.window.dropTarget = DropTarget().apply {
             addDropTargetListener(object : DropTargetAdapter() {
                 override fun drop(event: DropTargetDropEvent) {
-                    event.acceptDrop(DnDConstants.ACTION_COPY);
+                    event.acceptDrop(DnDConstants.ACTION_COPY)
                     val fileList = event.transferable.getTransferData(DataFlavor.javaFileListFlavor) as? List<*>
                     fileList?.let {
                         if (it.isNotEmpty()) {
@@ -80,6 +90,7 @@ fun DropTarget(
     }
 }
 
+@ExperimentalComposeUiApi
 @Composable
 fun FileListContent(model: FileListModel) {
     DesktopMaterialTheme {
@@ -87,23 +98,46 @@ fun FileListContent(model: FileListModel) {
             modifier = Modifier.fillMaxWidth().fillMaxHeight().padding(2.dp)
         ) {
             DirectorySelection(model) { dir ->
-                model.dir = dir
+                model.changeDirectory(dir)
             }
             Box(modifier = Modifier.fillMaxHeight()) {
+                val state = rememberLazyListState()
 
+                LazyColumn(Modifier.fillMaxSize().padding(end = 12.dp), state) {
+                    items(model.files) { file ->
+                        FileRow(file)
+                        Divider()
+                    }
+                }
+                VerticalScrollbar(
+                    modifier = Modifier.align(Alignment.CenterEnd).fillMaxHeight(),
+                    adapter = rememberScrollbarAdapter(scrollState = state)
+                )
             }
         }
     }
 }
 
-@OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun DirectorySelection(model: FileListModel, onSelectDirectory: (String) -> Unit) {
+fun FileRow(file: File) {
+    Row {
+        if (file.isDirectory) {
+            Icon(Icons.Filled.List, contentDescription = "File")
+        } else {
+            Icon(Icons.Filled.Edit, contentDescription = "File")
+        }
+        Text(text = file.name)
+    }
+}
+
+@ExperimentalComposeUiApi
+@Composable
+private fun DirectorySelection(model: FileListModel, onSelectDirectory: (String) -> Unit) {
     Row(modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
         TextField(
             value = model.dir,
             onValueChange = { model.dir = it },
-            label = { Text(text = "ディレクトリ") },
+            label = { Text(text = "Directory") },
             singleLine = true,
             modifier = Modifier.weight(1f).onPreviewKeyEvent {
                 if (it.key == Key.Enter) {
@@ -124,14 +158,15 @@ fun DirectorySelection(model: FileListModel, onSelectDirectory: (String) -> Unit
             },
             modifier = Modifier.fillMaxHeight()
         ) {
-            Text(text = "参照")
+            Text(text = "Select")
         }
     }
 }
 
+@ExperimentalComposeUiApi
 @Preview
 @Composable
-fun PreviewFileListContent() {
+private fun PreviewFileListContent() {
     val model = FileListModel()
     FileListContent(model)
 }
